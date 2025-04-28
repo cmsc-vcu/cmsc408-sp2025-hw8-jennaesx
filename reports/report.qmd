@@ -493,27 +493,39 @@ order by
 run_sql_and_return_html(cnx,"""
 with all_combinations as (
   select
-    distinct r.`Region`,
+    r.`Region`,
     i.`Income Group`
   from
     (select distinct `Region` from wdi_country where `Region` is not null) r
     cross join
     (select distinct `Income Group` from wdi_country where `Income Group` is not null) i
+),
+real_combinations as (
+  select
+    `Region`,
+    `Income Group`
+  from
+    wdi_country
+  where
+    `Region` is not null
+    and `Income Group` is not null
 )
 select
-  all_combinations.`Region`,
-  all_combinations.`Income Group`
+  a.`Region`,
+  a.`Income Group`,
+  0 as "# Countries"
 from
-  all_combinations
+  all_combinations a
 left join
-  (select distinct `Region`, `Income Group` from wdi_country) existing
+  real_combinations r
 on
-  all_combinations.`Region` = existing.`Region`
-  and all_combinations.`Income Group` = existing.`Income Group`
+  a.`Region` = r.`Region`
+  and a.`Income Group` = r.`Income Group`
 where
-  existing.`Region` is null
+  r.`Region` is null
 order by
-  all_combinations.`Region`, all_combinations.`Income Group`
+  a.`Region`,
+  a.`Income Group`
 """)
 
 ```
@@ -604,12 +616,12 @@ with total_countries as (
 )
 select
   `Region`,
-  round(sum(case when `Income Group` = 'High income' then 1 else 0 end) / (select total_count from total_countries) * 100, 2) as "High %",
-  round(sum(case when `Income Group` = 'Upper middle income' then 1 else 0 end) / (select total_count from total_countries) * 100, 2) as "Upper Middle %",
-  round(sum(case when `Income Group` = 'Lower middle income' then 1 else 0 end) / (select total_count from total_countries) * 100, 2) as "Lower Middle %",
-  round(sum(case when `Income Group` = 'Low income' then 1 else 0 end) / (select total_count from total_countries) * 100, 2) as "Low %",
-  round(sum(case when `Income Group` is null then 1 else 0 end) / (select total_count from total_countries) * 100, 2) as "Other %",
-  round(count(*) / (select total_count from total_countries) * 100, 2) as "Total %"
+  round(sum(case when `Income Group` = 'High income' then 1 else 0 end) * 100.0 / (select total_count from total_countries), 1) as "High Income %",
+  round(sum(case when `Income Group` = 'Upper middle income' then 1 else 0 end) * 100.0 / (select total_count from total_countries), 1) as "Upper Middle %",
+  round(sum(case when `Income Group` = 'Lower middle income' then 1 else 0 end) * 100.0 / (select total_count from total_countries), 1) as "Lower Middle %",
+  round(sum(case when `Income Group` = 'Low income' then 1 else 0 end) * 100.0 / (select total_count from total_countries), 1) as "Low Income %",
+  round(sum(case when `Income Group` is null then 1 else 0 end) * 100.0 / (select total_count from total_countries), 1) as "Other %",
+  round(count(*) * 100.0 / (select total_count from total_countries), 1) as "Row Total %"
 from
   wdi_country
 group by
@@ -635,16 +647,19 @@ with total_countries as (
   from wdi_country
 )
 select
-  `Income Group`,
+  case 
+    when `Income Group` is null then 'Other'
+    else `Income Group`
+  end as "Income Group",
   count(*) as "Number of Countries",
   (select total_count from total_countries) as "Total Countries",
-  round(count(*) / (select total_count from total_countries) * 100, 2) as "Percent of Total"
+  round(count(*) * 100.0 / (select total_count from total_countries), 1) as "Percent of Total"
 from
   wdi_country
 group by
   `Income Group`
 order by
-  `Income Group`
+  "Income Group"
 """)
 
 ```
