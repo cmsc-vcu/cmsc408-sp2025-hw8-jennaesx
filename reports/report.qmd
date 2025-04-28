@@ -92,13 +92,13 @@ List all non-countries.
 
 run_sql_and_return_html(cnx,"""
 select
-  `Short Name`,
-  `Long Name`,
-  `Region`
+  `Short Name`
 from
   world_bank_data.wdi_country
 where
   `Region` is null
+order by
+  `Short Name`
 """)
 ```
 
@@ -115,19 +115,19 @@ Create your own copy of WDI_Country containing just countries.
 ## (skills: select, aggregate)
 
 # drop table
-execute_ddl(cnx,"""
-drop table if exists wdi_country;
-""")
+#execute_ddl(cnx,"""
+#drop table if exists wdi_country;
+#""")
 ```
 
 ```{python}
 # create table
-execute_ddl(cnx,"""
-create table wdi_country as
-select *
-from world_bank_data.wdi_country
-where Region is not NULL
-""")
+#execute_ddl(cnx,"""
+#create table wdi_country as
+#select *
+#from world_bank_data.wdi_country
+#where Region is not NULL
+#""")
 ```
 
 ```{python}
@@ -321,11 +321,14 @@ order by
 ## Write an update comment to correct the issue.
 ## NOTE - if you get this wrong, all subsequent tables will be wrong!
 
-execute_ddl(cnx,"""
-update wdi_country
-set `Income Group` = 'High income'
-where `Short Name` = 'Venezuela'
-""")
+# this was being really finicky, this was the only way I could get it to keep the changes
+from sqlalchemy import text
+with cnx.begin() as conn:
+    conn.execute(text("""
+        update wdi_country
+        set `Income Group` = 'High income'
+        where `Short Name` = 'Venezuela'
+    """))
 ```
 ```{python}
 ## Now, display the country again to verify the change stuck!
